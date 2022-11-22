@@ -19,10 +19,7 @@ import com.mx.neoris.banco.dto.MovimientoDTO;
 import com.mx.neoris.banco.dto.MovimientoReporteDTO;
 import com.mx.neoris.banco.dto.MovimientoResponseDTO;
 import com.mx.neoris.banco.dto.ReporteDTO;
-import com.mx.neoris.banco.dto.UsuarioDTO;
-import com.mx.neoris.banco.models.Cliente;
 import com.mx.neoris.banco.models.Cuenta;
-import com.mx.neoris.banco.service.ClientesServiceImpl;
 import com.mx.neoris.banco.service.CuentaServiceImpl;
 import com.mx.neoris.banco.service.MovimientosServiceImpl;
 

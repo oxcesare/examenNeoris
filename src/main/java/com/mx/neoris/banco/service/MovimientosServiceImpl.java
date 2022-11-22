@@ -2,6 +2,7 @@ package com.mx.neoris.banco.service;
 
 import java.math.BigDecimal;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -9,6 +10,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -48,8 +50,6 @@ public class MovimientosServiceImpl implements IMovimientosService {
 	public MovimientoResponseDTO registrarMovimiento(MovimientoDTO movimientoDTO) throws ParseException {
 
 		log.info("Ejecucción Metodo - registrarMovimiento");
-
-		
 
 		Optional<Cuenta> cuenta = getCuenta(movimientoDTO.getNumCuenta());
 
@@ -151,52 +151,61 @@ public class MovimientosServiceImpl implements IMovimientosService {
 	}
 
 	@Override
-	public List<MovimientoReporteDTO> obtenerReporte(String fechaInicial, String fechaFinal, Long numCuenta) throws ParseException {
-		
-		List<Movimientos> reporte = iMovimientoRepository.findAllByDate(
-				Utilerias.formatLocaDateTime(fechaInicial), 
-				Utilerias.formatLocaDateTime(fechaFinal));
+	public List<MovimientoReporteDTO> obtenerReporte(String fechaInicial, String fechaFinal, Long numCuenta)
+			throws ParseException {
 
-		log.info("Size()", reporte.size());
+		List<MovimientoReporteDTO> resultado = new ArrayList<>();
 		
-		List<MovimientoReporteDTO> resultado = reporte.stream().filter(c -> c.getNumCuenta().equals(numCuenta))
-				.map(temp -> {
-					
-				   Optional<Cuenta> cuenta = getCuenta(numCuenta);
-				   MovimientoReporteDTO dto = new MovimientoReporteDTO();
-				   dto.setFecha(Utilerias.formatLocaDateTimeSinT(temp.getFecha()));
-				   dto.setCliente(cuenta.get().getCliente().getNombre());
-				   dto.setNumCuenta(temp.getNumCuenta());
-				   dto.setTipo(temp.getTipo());
-				   dto.setSaldoInicial(temp.getSaldo());
-				   dto.setEstado(temp.isEstado());
-				   dto.setMovimiento(temp.getCantidad());
-				   dto.setSaldoDisponible(temp.getSaldoDisponible());				   
-				   return dto;
+		Optional<Cuenta> validarCuenta = getCuenta(numCuenta);
+		
+		if(validarCuenta.isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+					String.format("Numero de cuenta no Existente",
+							numCuenta));		
+		}	
+		
+		if(fechaInicial.equals("")||fechaFinal.equals("")|| numCuenta==null) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					String.format("Datos de Entrada incompletos",
+							numCuenta));
+		}
+
+		try {
+			
+			List<Movimientos> reporte = iMovimientoRepository.findAllByDate(Utilerias.formatLocaDateTime(fechaInicial),
+					Utilerias.formatLocaDateTime(fechaFinal));
+			
+			if(reporte.size()>0) {
+				
+				log.info("Size()", reporte.size());
+
+				resultado = reporte.stream().filter(c -> c.getNumCuenta().equals(numCuenta)).map(temp -> {
+
+					Optional<Cuenta> cuenta = getCuenta(numCuenta);
+					MovimientoReporteDTO dto = new MovimientoReporteDTO();
+					dto.setFecha(Utilerias.formatLocaDateTimeSinT(temp.getFecha()));
+					dto.setCliente(cuenta.get().getCliente().getNombre());
+					dto.setNumCuenta(temp.getNumCuenta());
+					dto.setTipo(temp.getTipo());
+					dto.setSaldoInicial(temp.getSaldo());
+					dto.setEstado(temp.isEstado());
+					dto.setMovimiento(temp.getCantidad());
+					dto.setSaldoDisponible(temp.getSaldoDisponible());
+					return dto;
 				}).collect(Collectors.toList());
+				
+				return resultado;
+			}else {
+				throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+						String.format("No se encontraron registros con la informacion proporcionada",
+								numCuenta));
+			}
+		} catch (DataAccessException e) {				
+				log.error("Error",e.getMessage());
+				throw new ResponseStatusException(HttpStatus.SEE_OTHER, String.format("Error Base de Datos",
+						numCuenta));
+		}
 		
-		
-		return resultado;
 	}
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
